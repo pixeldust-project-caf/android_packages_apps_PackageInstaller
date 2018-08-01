@@ -20,9 +20,7 @@
     <string name="next" msgid="3057143178373252333">"পৰৱৰ্তী"</string>
     <string name="install" msgid="5896438203900042068">"ইনষ্টল কৰক"</string>
     <string name="done" msgid="3889387558374211719">"সম্পন্ন হ\'ল"</string>
-    <string name="security_settings_desc" msgid="2706691034244052604">"এই এপটোক এইবোৰৰ অনুমতি দিয়ক:"</string>
     <string name="cancel" msgid="8360346460165114585">"বাতিল কৰক"</string>
-    <string name="unknown" msgid="4742479012767208045">"অজ্ঞাত"</string>
     <string name="installing" msgid="8613631001631998372">"ইনষ্টল কৰি থকা হৈছে…"</string>
     <string name="installing_app" msgid="4097935682329028894">"<xliff:g id="PACKAGE_LABEL">%1$s</xliff:g> ইনষ্টল কৰি থকা হৈছে…"</string>
     <string name="install_done" msgid="3682715442154357097">"এপ্ ইনষ্টল কৰা হ\'ল।"</string>
@@ -47,14 +45,9 @@
     <string name="unknown_apps_user_restriction_dlg_text" msgid="5785226253054083336">"এই ব্যৱহাৰকাৰীয়ে অজ্ঞাত উৎসৰপৰা লাভ কৰা এপসমূহ ইনষ্টল কৰিব নোৱাৰে"</string>
     <string name="install_apps_user_restriction_dlg_text" msgid="5041150186260066212">"এই ব্যৱহাৰকাৰীক এপ্ ইনষ্টল কৰিবলৈ অনুমতি দিয়া হোৱা নাই"</string>
     <string name="ok" msgid="3468756155452870475">"ঠিক আছে"</string>
-    <string name="settings" msgid="6743583734099755409">"ছেটিংসমূহ"</string>
     <string name="manage_applications" msgid="4033876279091996596">"এপসমূহ পৰিচালনা কৰক"</string>
-    <string name="dlg_app_replacement_title" msgid="1232230739563820951">"এপ্ সলনি কৰিবনে?"</string>
-    <string name="dlg_app_replacement_statement" msgid="2992911899989907492">"আপুনি ইনষ্টল কৰা এপে অন্য এটা এপক সলনি কৰিব।\n\nআপোনাৰ পূৰ্বৰ সকলো ডেটা ছেভ কৰা হ\'ব।"</string>
-    <string name="dlg_sys_app_replacement_statement" msgid="1900046590819605929">"এইটো এটা ছিষ্টেম এপ্।\n\nআপোনাৰ পূৰ্বৰ সকলো ডেটা ছেভ কৰা হ\'ব।"</string>
     <string name="out_of_space_dlg_title" msgid="7843674437613797326">"পৰ্যাপ্ত খালী ঠাই নাই"</string>
     <string name="out_of_space_dlg_text" msgid="4774775404294282216">"<xliff:g id="APP_NAME">%1$s</xliff:g>ক ইনষ্টল কৰিব পৰা নগ\'ল। কিছু খালী ঠাই উলিয়াই পুনৰ চেষ্টা কৰক৷"</string>
-    <string name="dlg_ok" msgid="6944357727705699232">"ঠিক আছে"</string>
     <string name="app_not_found_dlg_title" msgid="2692335460569505484">"এপ্ পোৱা নগ\'ল"</string>
     <string name="app_not_found_dlg_text" msgid="6107465056055095930">"ইনষ্টল হৈ থকা এপসমূহৰ তালিকাত এই এপটো পোৱা নগ\'ল।"</string>
     <string name="user_is_not_allowed_dlg_title" msgid="118128026847201582">"অনুমতি দিয়া হোৱা নাই"</string>
@@ -91,7 +84,6 @@
     <string name="privacyPerms" msgid="1850527049572617">"গোপনীয়তা"</string>
     <string name="devicePerms" msgid="6733560207731294504">"ডিভাইচৰ ব্যৱহাৰ"</string>
     <string name="no_new_perms" msgid="6657813692169565975">"এই আপডেটক কোনো নতুন অনুমতিৰ প্ৰয়োজন নাই।"</string>
-    <string name="grant_confirm_question" msgid="4690289297029223742">"আপুনি তলৰ অনুমতিসমূহৰ অনুমোদন জনাব বিচাৰেনে? ই এই প্ৰৱেশাধিকাৰ লাভ কৰিব:"</string>
     <string name="grant_dialog_button_deny" msgid="2176510645406614340">"প্ৰত্যাখ্যান কৰক"</string>
     <string name="grant_dialog_button_more_info" msgid="2218220771432058426">"অধিক তথ্য"</string>
     <string name="grant_dialog_button_deny_anyway" msgid="847960499284125250">"যিহ\'লেও অস্বীকাৰ কৰক"</string>
@@ -131,7 +123,6 @@
     <string name="screen_overlay_button" msgid="4344544843349937743">"ছেটিংসমূহ খোলক"</string>
     <string name="wear_not_allowed_dlg_title" msgid="8104666773577525713">"Android ৱেৰ"</string>
     <string name="wear_not_allowed_dlg_text" msgid="1322352525843583064">"ইনষ্টল/আনইনষ্টল কাৰ্য Wearত কৰিব নোৱাৰি।"</string>
-    <string name="permission_review_warning_title_template_update" msgid="2569412700408535872">"<xliff:g id="APP_NAME_0">%1$s</xliff:g>ক আপডেট কৰা হ\'ল। <xliff:g id="APP_NAME_1">%1$s</xliff:g>ক এইবোৰ ব্যৱহাৰৰ অনুমতি দিবনে?"</string>
     <string name="permission_review_title_template_install" msgid="6819338441305295479">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt;ক কি কিত প্ৰৱেশ কৰিবলৈ অনুমতি দিব বাছনি কৰক"</string>
     <string name="permission_review_title_template_update" msgid="8632233603161669426">"&lt;b&gt;<xliff:g id="APP_NAME">%1$s</xliff:g>&lt;/b&gt; আপডেট কৰা হৈছে। এই এপক কি কিত প্ৰৱেশ কৰিবলৈ অনুমতি দিব বাছনি কৰক।"</string>
     <string name="review_button_cancel" msgid="957906817733578877">"বাতিল কৰক"</string>

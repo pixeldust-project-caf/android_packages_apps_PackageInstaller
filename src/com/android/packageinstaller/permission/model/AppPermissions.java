@@ -18,22 +18,34 @@ package com.android.packageinstaller.permission.model;
 
 import android.content.Context;
 import android.content.pm.PackageInfo;
+import android.content.pm.PackageItemInfo;
 import android.content.pm.PackageManager;
 import android.text.BidiFormatter;
+import android.util.ArrayMap;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
 
+/**
+ * An app that requests permissions.
+ *
+ * <p>Allows to query all permission groups of the app and which permission belongs to which group.
+ */
 public final class AppPermissions {
+    /**
+     * All permission groups the app requests. Background permission groups are attached to their
+     * foreground groups.
+     */
     private final ArrayList<AppPermissionGroup> mGroups = new ArrayList<>();
 
-    private final LinkedHashMap<String, AppPermissionGroup> mNameToGroupMap = new LinkedHashMap<>();
+    /** Cache: group name -> group */
+    private final ArrayMap<String, AppPermissionGroup> mGroupNameToGroup = new ArrayMap<>();
+
+    /** Cache: permission name -> group. Might point to background group */
+    private final ArrayMap<String, AppPermissionGroup> mPermissionNameToGroup = new ArrayMap<>();
 
     private final Context mContext;
-
-    private final String[] mFilterPermissions;
 
     private final CharSequence mAppLabel;
 
@@ -43,14 +55,16 @@ public final class AppPermissions {
 
     private PackageInfo mPackageInfo;
 
-    public AppPermissions(Context context, PackageInfo packageInfo, String[] filterPermissions,
-            boolean sortGroups, Runnable onErrorCallback) {
+    public AppPermissions(Context context, PackageInfo packageInfo, boolean sortGroups,
+            Runnable onErrorCallback) {
         mContext = context;
         mPackageInfo = packageInfo;
-        mFilterPermissions = filterPermissions;
         mAppLabel = BidiFormatter.getInstance().unicodeWrap(
-                packageInfo.applicationInfo.loadSafeLabel(
-                context.getPackageManager()).toString());
+                packageInfo.applicationInfo.loadSafeLabel(context.getPackageManager(),
+                        PackageItemInfo.DEFAULT_MAX_LABEL_SIZE_PX,
+                        PackageItemInfo.SAFE_LABEL_FLAG_TRIM
+                                | PackageItemInfo.SAFE_LABEL_FLAG_FIRST_LINE)
+                        .toString());
         mSortGroups = sortGroups;
         mOnErrorCallback = onErrorCallback;
         loadPermissionGroups();
@@ -70,7 +84,7 @@ public final class AppPermissions {
     }
 
     public AppPermissionGroup getPermissionGroup(String name) {
-        return mNameToGroupMap.get(name);
+        return mGroupNameToGroup.get(name);
     }
 
     public List<AppPermissionGroup> getPermissionGroups() {
@@ -102,66 +116,63 @@ public final class AppPermissions {
         }
     }
 
-    private void loadPermissionGroups() {
-        mGroups.clear();
+    /**
+     * Add all individual permissions of the {@code group} to the {@link #mPermissionNameToGroup}
+     * lookup table.
+     *
+     * @param group The group of permissions to add
+     */
+    private void addAllPermissions(AppPermissionGroup group) {
+        ArrayList<Permission> perms = group.getPermissions();
 
-        if (mPackageInfo.requestedPermissions == null) {
-            return;
-        }
-
-        if (mFilterPermissions != null) {
-            for (String filterPermission : mFilterPermissions) {
-                for (String requestedPerm : mPackageInfo.requestedPermissions) {
-                    if (!filterPermission.equals(requestedPerm)) {
-                        continue;
-                    }
-                    addPermissionGroupIfNeeded(requestedPerm);
-                    break;
-                }
-            }
-        } else {
-            for (String requestedPerm : mPackageInfo.requestedPermissions) {
-                addPermissionGroupIfNeeded(requestedPerm);
-            }
-        }
-
-        if (mSortGroups) {
-            Collections.sort(mGroups);
-        }
-
-        mNameToGroupMap.clear();
-        for (AppPermissionGroup group : mGroups) {
-            mNameToGroupMap.put(group.getName(), group);
+        int numPerms = perms.size();
+        for (int permNum = 0; permNum < numPerms; permNum++) {
+            mPermissionNameToGroup.put(perms.get(permNum).getName(), group);
         }
     }
 
-    private void addPermissionGroupIfNeeded(String permission) {
-        if (getGroupForPermission(permission) != null) {
-            return;
-        }
+    private void loadPermissionGroups() {
+        mGroups.clear();
+        mGroupNameToGroup.clear();
+        mPermissionNameToGroup.clear();
 
-        AppPermissionGroup group = AppPermissionGroup.create(mContext,
-                mPackageInfo, permission);
-        if (group == null) {
-            return;
-        }
+        if (mPackageInfo.requestedPermissions != null) {
+            for (String requestedPerm : mPackageInfo.requestedPermissions) {
+                if (getGroupForPermission(requestedPerm) == null) {
+                    AppPermissionGroup group = AppPermissionGroup.create(mContext, mPackageInfo,
+                            requestedPerm);
+                    if (group == null) {
+                        continue;
+                    }
 
-        mGroups.add(group);
+                    mGroups.add(group);
+                    mGroupNameToGroup.put(group.getName(), group);
+
+                    addAllPermissions(group);
+
+                    AppPermissionGroup backgroundGroup = group.getBackgroundPermissions();
+                    if (backgroundGroup != null) {
+                        addAllPermissions(backgroundGroup);
+                    }
+                }
+            }
+
+            if (mSortGroups) {
+                Collections.sort(mGroups);
+            }
+        }
     }
 
     /**
      * Find the group a permission belongs to.
+     *
+     * <p>The group found might be a background group.
      *
      * @param permission The name of the permission
      *
      * @return The group the permission belongs to
      */
     public AppPermissionGroup getGroupForPermission(String permission) {
-        for (AppPermissionGroup group : mGroups) {
-            if (group.hasPermission(permission)) {
-                return group;
-            }
-        }
-        return null;
+        return mPermissionNameToGroup.get(permission);
     }
 }

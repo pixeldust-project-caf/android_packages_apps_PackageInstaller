@@ -33,14 +33,15 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings;
-import android.support.v14.preference.SwitchPreference;
-import android.support.v7.preference.Preference;
-import android.support.v7.preference.Preference.OnPreferenceChangeListener;
-import android.support.v7.preference.Preference.OnPreferenceClickListener;
-import android.support.v7.preference.PreferenceCategory;
-import android.support.v7.preference.PreferenceGroup;
 import android.util.Log;
 import android.view.MenuItem;
+
+import androidx.preference.Preference;
+import androidx.preference.Preference.OnPreferenceChangeListener;
+import androidx.preference.Preference.OnPreferenceClickListener;
+import androidx.preference.PreferenceCategory;
+import androidx.preference.PreferenceGroup;
+import androidx.preference.SwitchPreference;
 
 import com.android.packageinstaller.R;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
@@ -87,7 +88,7 @@ public final class AllAppPermissionsFragment extends SettingsWithHeader {
             getActivity().finish();
         }
 
-        mAppPermissions = new AppPermissions(getActivity(), mPackageInfo, null, false,
+        mAppPermissions = new AppPermissions(getActivity(), mPackageInfo, false,
                 new Runnable() {
             @Override
             public void run() {

@@ -80,7 +80,11 @@ public final class GrantPermissionsViewHandlerImpl implements GrantPermissionsVi
 
     @Override
     public void updateUi(String groupName, int groupCount, int groupIndex, Icon icon,
-            CharSequence message, boolean showDoNotAsk) {
+            CharSequence message, CharSequence detailMessage, boolean showForegroundChooser,
+            boolean showDoNotAsk) {
+        // TODO: Handle detailMessage
+        // TODO: Handle showForegroundChooser
+
         mGroupName = groupName;
 
         mMessageView.setText(message);
@@ -111,25 +115,23 @@ public final class GrantPermissionsViewHandlerImpl implements GrantPermissionsVi
 
     @Override
     public void onClick(View view) {
-        boolean granted = false;
-        boolean doNotAskAgain = false;
         switch (view.getId()) {
             case R.id.permission_allow_button:
-                granted = true;
+                mResultListener.onPermissionGrantResult(mGroupName, GRANTED_ALWAYS);
+                break;
+            case R.id.permission_deny_button:
+                mResultListener.onPermissionGrantResult(mGroupName, DENIED);
                 break;
             case R.id.permission_deny_dont_ask_again_button:
-                doNotAskAgain = true;
+                mResultListener.onPermissionGrantResult(mGroupName, DENIED_DO_NOT_ASK_AGAIN);
                 break;
-        }
-        if (mResultListener != null) {
-            mResultListener.onPermissionGrantResult(mGroupName, granted, doNotAskAgain);
         }
     }
 
     @Override
     public void onBackPressed() {
         if (mResultListener != null) {
-            mResultListener.onPermissionGrantResult(mGroupName, false, false);
+            mResultListener.onPermissionGrantResult(mGroupName, DENIED);
         }
     }
 }

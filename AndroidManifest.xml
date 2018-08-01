@@ -101,6 +101,7 @@
         <activity android:name=".UninstallerActivity"
                 android:configChanges="orientation|keyboardHidden|screenSize"
                 android:excludeFromRecents="true"
+                android:noHistory="true"
                 android:theme="@style/AlertDialogActivity">
             <intent-filter android:priority="1">
                 <action android:name="android.intent.action.DELETE" />
@@ -131,7 +132,7 @@
                 android:exported="false" />
 
         <activity android:name=".permission.ui.GrantPermissionsActivity"
-                android:configChanges="orientation|keyboardHidden|screenSize"
+                android:configChanges="keyboardHidden|screenSize"
                 android:excludeFromRecents="true"
                 android:theme="@style/GrantPermissions"
                 android:visibleToInstantApps="true">
@@ -143,7 +144,6 @@
 
         <activity android:name=".permission.ui.ManagePermissionsActivity"
                   android:configChanges="orientation|keyboardHidden|screenSize"
-                  android:excludeFromRecents="true"
                   android:label="@string/app_permissions"
                   android:theme="@style/Settings"
                   android:permission="android.permission.GRANT_RUNTIME_PERMISSIONS">
@@ -185,10 +185,6 @@
                   android:authorities="com.google.android.packageinstaller.wear.provider"
                   android:grantUriPermissions="true"
                   android:exported="true" />
-
-        <activity android:name=".permission.ui.wear.WarningConfirmationActivity"
-                  android:permission="android.permission.GRANT_RUNTIME_PERMISSIONS"
-                  android:theme="@style/Settings"/>
     </application>
 
 </manifest>
