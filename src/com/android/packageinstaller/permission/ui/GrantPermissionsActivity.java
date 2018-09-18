@@ -17,6 +17,7 @@
 package com.android.packageinstaller.permission.ui;
 
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
+import static android.view.WindowManager.LayoutParams.PRIVATE_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS;
 
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler.DENIED;
 import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHandler
@@ -26,6 +27,7 @@ import static com.android.packageinstaller.permission.ui.GrantPermissionsViewHan
         .GRANTED_FOREGROUND_ONLY;
 import static com.android.packageinstaller.permission.utils.Utils.getRequestMessage;
 
+import android.app.Activity;
 import android.app.admin.DevicePolicyManager;
 import android.content.Intent;
 import android.content.pm.PackageInfo;
@@ -47,23 +49,25 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 
-import com.android.internal.content.PackageMonitor;
+import androidx.annotation.Nullable;
+
 import com.android.internal.logging.nano.MetricsProto;
 import com.android.packageinstaller.DeviceUtils;
-import com.android.permissioncontroller.R;
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
 import com.android.packageinstaller.permission.model.Permission;
 import com.android.packageinstaller.permission.ui.auto.GrantPermissionsAutoViewHandler;
 import com.android.packageinstaller.permission.utils.ArrayUtils;
 import com.android.packageinstaller.permission.utils.EventLogger;
+import com.android.packageinstaller.permission.utils.PackageRemovalMonitor;
 import com.android.packageinstaller.permission.utils.SafetyNetLogger;
+import com.android.permissioncontroller.R;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-public class GrantPermissionsActivity extends OverlayTouchActivity
+public class GrantPermissionsActivity extends Activity
         implements GrantPermissionsViewHandler.ResultListener {
 
     private static final String LOG_TAG = "GrantPermissionsActivity";
@@ -78,8 +82,17 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
 
     boolean mResultSet;
 
-    private PackageManager.OnPermissionsChangedListener mPermissionChangeListener;
-    private PackageMonitor mPackageMonitor;
+    /**
+     * Listens for changes to the permission of the app the permissions are currently getting
+     * granted to. {@code null} when unregistered.
+     */
+    private @Nullable PackageManager.OnPermissionsChangedListener mPermissionChangeListener;
+
+    /**
+     * Listens for changes to the app the permissions are currently getting granted to. {@code null}
+     * when unregistered.
+     */
+    private @Nullable PackageRemovalMonitor mPackageRemovalMonitor;
 
     private String mCallingPackage;
 
@@ -160,19 +173,10 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
 
+        getWindow().addPrivateFlags(PRIVATE_FLAG_HIDE_NON_SYSTEM_OVERLAY_WINDOWS);
+
         // Cache this as this can only read on onCreate, not later.
         mCallingPackage = getCallingPackage();
-
-        mPackageMonitor = new PackageMonitor() {
-            @Override
-            public void onPackageRemoved(String packageName, int uid) {
-                if (mCallingPackage.equals(packageName)) {
-                    Log.w(LOG_TAG, mCallingPackage + " was uninstalled");
-
-                    finish();
-                }
-            }
-        };
 
         setFinishOnTouchOutside(false);
 
@@ -205,13 +209,6 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
         final int requestedPermCount = mRequestedPermissions.length;
 
         if (requestedPermCount == 0) {
-            setResultAndFinish();
-            return;
-        }
-
-        try {
-            mPermissionChangeListener = new PermissionChangeListener();
-        } catch (NameNotFoundException e) {
             setResultAndFinish();
             return;
         }
@@ -380,11 +377,25 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     protected void onStart() {
         super.onStart();
 
+        try {
+            mPermissionChangeListener = new PermissionChangeListener();
+        } catch (NameNotFoundException e) {
+            setResultAndFinish();
+            return;
+        }
         PackageManager pm = getPackageManager();
         pm.addOnPermissionsChangeListener(mPermissionChangeListener);
 
         // get notified when the package is removed
-        mPackageMonitor.register(this, getMainLooper(), false);
+        mPackageRemovalMonitor = new PackageRemovalMonitor(this, mCallingPackage) {
+            @Override
+            public void onPackageRemoved() {
+                Log.w(LOG_TAG, mCallingPackage + " was uninstalled");
+
+                finish();
+            }
+        };
+        mPackageRemovalMonitor.register();
 
         // check if the package was removed while this activity was not started
         try {
@@ -401,9 +412,15 @@ public class GrantPermissionsActivity extends OverlayTouchActivity
     protected void onStop() {
         super.onStop();
 
-        mPackageMonitor.unregister();
+        if (mPackageRemovalMonitor != null) {
+            mPackageRemovalMonitor.unregister();
+            mPackageRemovalMonitor = null;
+        }
 
-        getPackageManager().removeOnPermissionsChangeListener(mPermissionChangeListener);
+        if (mPermissionChangeListener != null) {
+            getPackageManager().removeOnPermissionsChangeListener(mPermissionChangeListener);
+            mPermissionChangeListener = null;
+        }
     }
 
     @Override

@@ -44,6 +44,8 @@ public final class Utils {
 
     public static final String OS_PKG = "android";
 
+    public static final float DEFAULT_MAX_LABEL_SIZE_PX = 500f;
+
     public static final String[] MODERN_PERMISSION_GROUPS = {
             Manifest.permission_group.CALENDAR,
             Manifest.permission_group.CALL_LOG,
@@ -91,7 +93,7 @@ public final class Utils {
      *
      * @return
      */
-    public static boolean shouldShowPermission(AppPermissionGroup group) {
+    public static boolean shouldShowPermission(Context context, AppPermissionGroup group) {
         boolean isSystemFixed = group.isSystemFixed();
         if (group.getBackgroundPermissions() != null) {
             // If the foreground mode is fixed to "enabled", the background mode might still be
@@ -103,7 +105,7 @@ public final class Utils {
 
         // We currently will not show permissions fixed by the system.
         // which is what the system does for system components.
-        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(
+        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(context,
                 group.getName(), group.getApp().packageName)) {
             return false;
         }
