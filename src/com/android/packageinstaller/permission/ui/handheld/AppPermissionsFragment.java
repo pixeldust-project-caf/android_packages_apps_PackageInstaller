@@ -26,9 +26,9 @@ import android.content.pm.PackageManager;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.UserHandle;
 import android.provider.Settings;
 import android.util.ArraySet;
-import android.util.IconDrawableFactory;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -42,6 +42,7 @@ import androidx.preference.PreferenceScreen;
 
 import com.android.packageinstaller.permission.model.AppPermissionGroup;
 import com.android.packageinstaller.permission.model.AppPermissions;
+import com.android.packageinstaller.permission.utils.IconDrawableFactory;
 import com.android.packageinstaller.permission.utils.SafetyNetLogger;
 import com.android.packageinstaller.permission.utils.Utils;
 import com.android.permissioncontroller.R;
@@ -59,8 +60,6 @@ public final class AppPermissionsFragment extends SettingsWithHeader
     private static final String LOG_TAG = "ManagePermsFragment";
 
     static final String EXTRA_HIDE_INFO_BUTTON = "hideInfoButton";
-
-    private static final int MENU_ALL_PERMS = 0;
 
     private ArraySet<AppPermissionGroup> mToggledGroups;
     private AppPermissions mAppPermissions;
@@ -166,7 +165,8 @@ public final class AppPermissionsFragment extends SettingsWithHeader
                     .setData(Uri.fromParts("package", packageInfo.packageName, null));
         }
 
-        Drawable icon = IconDrawableFactory.newInstance(activity).getBadgedIcon(appInfo);
+        Drawable icon = IconDrawableFactory.getBadgedIcon(activity, appInfo,
+                UserHandle.getUserHandleForUid(appInfo.uid));
         CharSequence label = appInfo.loadLabel(pm);
         fragment.setHeader(icon, label, infoIntent);
 
@@ -205,7 +205,7 @@ public final class AppPermissionsFragment extends SettingsWithHeader
 
             boolean isPlatform = group.getDeclaringPackage().equals(Utils.OS_PKG);
 
-            PermissionPreference preference = new PermissionPreference(this, group, this);
+            PermissionPreference preference = new PermissionPreference(this, group, this, 0);
             preference.setKey(group.getName());
             Drawable icon = Utils.loadDrawable(context.getPackageManager(),
                     group.getIconPkg(), group.getIconResId());
