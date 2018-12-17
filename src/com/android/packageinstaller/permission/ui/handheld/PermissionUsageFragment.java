@@ -211,7 +211,7 @@ public class PermissionUsageFragment extends PermissionsFrameFragment implements
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case android.R.id.home:
-                getFragmentManager().popBackStack();
+                getActivity().finish();
                 return true;
             case MENU_SHOW_SYSTEM:
             case MENU_HIDE_SYSTEM:
@@ -329,7 +329,8 @@ public class PermissionUsageFragment extends PermissionsFrameFragment implements
         for (int i = 0, numUsages = appPermissionUsages.size(); i < numUsages; i++) {
             AppPermissionUsage usage = appPermissionUsages.get(i);
             // Filter out entries we've seen before.
-            if (!addedEntries.add(usage.getPackageName() + "," + usage.getPermissionGroupName())) {
+            if (!addedEntries.add(usage.getPackageName() + "," + usage.getUid() + ","
+                    + usage.getPermissionGroupName())) {
                 continue;
             }
             PermissionApp permApp = usageToApp.get(usage);

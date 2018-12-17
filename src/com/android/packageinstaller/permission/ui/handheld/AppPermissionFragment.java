@@ -34,6 +34,7 @@ import android.os.Bundle;
 import android.os.UserHandle;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -103,11 +104,12 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
      * @return A new fragment
      */
     public static @NonNull AppPermissionFragment newInstance(@NonNull String packageName,
-            @NonNull String permissionName) {
+            @NonNull String permissionName, @NonNull UserHandle userHandle) {
         AppPermissionFragment fragment = new AppPermissionFragment();
         Bundle arguments = new Bundle();
         arguments.putString(Intent.EXTRA_PACKAGE_NAME, packageName);
         arguments.putString(Intent.EXTRA_PERMISSION_NAME, permissionName);
+        arguments.putParcelable(Intent.EXTRA_USER, userHandle);
         fragment.setArguments(arguments);
         return fragment;
     }
@@ -132,10 +134,12 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
 
     private void createAppPermissionGroup() {
         String packageName = getArguments().getString(Intent.EXTRA_PACKAGE_NAME);
+        UserHandle userHandle = getArguments().getParcelable(Intent.EXTRA_USER);
         Activity activity = getActivity();
         Context context = getPreferenceManager().getContext();
-        mGroup = AppPermissionGroup.create(context, getPackageInfo(activity, packageName),
-                getArguments().getString(Intent.EXTRA_PERMISSION_NAME), false);
+        mGroup = AppPermissionGroup.create(context,
+                getPackageInfo(activity, packageName, userHandle),
+                getArguments().getString(Intent.EXTRA_PERMISSION_NAME), userHandle, false);
 
         if (mGroup == null || !Utils.shouldShowPermission(context, mGroup)) {
             Log.i(LOG_TAG, "Illegal group: " + (mGroup == null ? "null" : mGroup.getName()));
@@ -196,6 +200,7 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
         super.onStart();
 
         String packageName = getArguments().getString(Intent.EXTRA_PACKAGE_NAME);
+        UserHandle userHandle = getArguments().getParcelable(Intent.EXTRA_USER);
         Activity activity = getActivity();
 
         // Get notified when permissions change.
@@ -223,7 +228,8 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
 
         // Check if the package was removed while this activity was not started.
         try {
-            pm.getPackageInfo(packageName, 0);
+            activity.createPackageContextAsUser(
+                    packageName, 0, userHandle).getPackageManager().getPackageInfo(packageName, 0);
         } catch (NameNotFoundException e) {
             Log.w(LOG_TAG, packageName + " was uninstalled while this activity was stopped", e);
             activity.setResult(Activity.RESULT_CANCELED);
@@ -245,6 +251,15 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
                     mPermissionChangeListener);
             mPermissionChangeListener = null;
         }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getActivity().finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     /**
@@ -296,23 +311,20 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
 
         // Handle the UI for various special cases.
         Context context = getContext();
-        if (isPolicyFullyFixed() || isForegroundDisabledByPolicy()) {
+        if (isSystemFixed() || isPolicyFullyFixed() || isForegroundDisabledByPolicy()) {
             // Disable changing permissions and potentially show administrator message.
+            mAlwaysButton.setEnabled(false);
+            mForegroundOnlyButton.setEnabled(false);
+            mDenyButton.setEnabled(false);
+
             EnforcedAdmin admin = getAdmin();
             if (admin != null) {
-                mAlwaysButton.setEnabled(false);
-                mForegroundOnlyButton.setEnabled(false);
-                mDenyButton.setEnabled(false);
-
                 showRightIcon(R.drawable.ic_info);
                 mWidgetFrame.setOnClickListener(v ->
                         RestrictedLockUtils.sendShowAdminSupportDetailsIntent(context, admin)
                 );
-            } else {
-                mAlwaysButton.setEnabled(false);
-                mForegroundOnlyButton.setEnabled(false);
-                mDenyButton.setEnabled(false);
             }
+
             updateDetailForFixedByPolicyPermissionGroup();
         } else if (Utils.areGroupPermissionsIndividuallyControlled(context, mGroup.getName())) {
             // If the permissions are individually controlled, also show a link to the page that
@@ -397,16 +409,26 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
     }
 
     private static @Nullable PackageInfo getPackageInfo(@NonNull Activity activity,
-            @NonNull String packageName) {
+            @NonNull String packageName, @NonNull UserHandle userHandle) {
         try {
-            return activity.getPackageManager().getPackageInfo(
-                    packageName, PackageManager.GET_PERMISSIONS);
+            return activity.createPackageContextAsUser(packageName, 0,
+                    userHandle).getPackageManager().getPackageInfo(packageName,
+                    PackageManager.GET_PERMISSIONS);
         } catch (PackageManager.NameNotFoundException e) {
             Log.i(LOG_TAG, "No package: " + activity.getCallingPackage(), e);
             activity.setResult(Activity.RESULT_CANCELED);
             activity.finish();
             return null;
         }
+    }
+
+    /**
+     * Are any permissions of this group fixed by the system, i.e. not changeable by the user.
+     *
+     * @return {@code true} iff any permission is fixed
+     */
+    private boolean isSystemFixed() {
+        return mGroup.isSystemFixed();
     }
 
     /**
@@ -468,7 +490,11 @@ public class AppPermissionFragment extends PermissionsFrameFragment {
 
         boolean hasAdmin = admin != null;
 
-        if (isForegroundDisabledByPolicy()) {
+        if (isSystemFixed()) {
+            // Permission is fully controlled by the system and cannot be switched
+
+            setDetail(R.string.permission_summary_enabled_system_fixed);
+        } else if (isForegroundDisabledByPolicy()) {
             // Permission is fully controlled by policy and cannot be switched
 
             if (hasAdmin) {

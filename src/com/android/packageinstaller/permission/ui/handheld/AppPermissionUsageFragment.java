@@ -29,6 +29,7 @@ import android.os.UserHandle;
 import android.util.ArrayMap;
 import android.util.ArraySet;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.Toast;
 
@@ -117,6 +118,15 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
         }
     }
 
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            getActivity().finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
     private static PackageInfo getPackageInfo(@NonNull Activity activity,
             @NonNull String packageName) {
         try {
@@ -187,7 +197,9 @@ public class AppPermissionUsageFragment extends SettingsWithHeader {
             String timeDiffStr = Utils.getTimeDiffStr(context, timeDiff);
             String summary = context.getString(R.string.app_permission_usage_summary, timeDiffStr);
             Preference pref = new PermissionUsagePreference(context, usage,
-                    usage.getPermissionGroupLabel(), summary, group.getIconResId());
+                    usage.getPermissionGroupLabel(), summary,
+                    Utils.applyTint(context, group.getIconResId(),
+                            android.R.attr.colorControlNormal));
             screen.addPreference(pref);
         }
 
