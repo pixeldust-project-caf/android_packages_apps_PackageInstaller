@@ -19,39 +19,35 @@ package com.android.packageinstaller.permission.ui.handheld;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
+import android.os.UserHandle;
 
 import androidx.annotation.NonNull;
 import androidx.preference.Preference;
 
 import com.android.packageinstaller.permission.model.AppPermissionUsage;
+import com.android.packageinstaller.permission.ui.AppPermissionActivity;
 
 /**
  * A preference for representing a permission usage by an app.
  */
 public class PermissionUsagePreference extends Preference {
     public PermissionUsagePreference(@NonNull Context context, @NonNull AppPermissionUsage usage,
-            @NonNull CharSequence title, @NonNull String summary, int iconResId) {
-        super(context);
-        updateUi(context, usage, title, summary);
-        setIcon(iconResId);
-    }
-
-    public PermissionUsagePreference(@NonNull Context context, @NonNull AppPermissionUsage usage,
             @NonNull CharSequence title, @NonNull String summary, @NonNull Drawable icon) {
         super(context);
-        updateUi(context, usage, title, summary);
-        setIcon(icon);
+        updateUi(context, usage, title, summary, icon);
     }
 
     private void updateUi(@NonNull Context context, @NonNull AppPermissionUsage usage,
-            @NonNull CharSequence title, @NonNull String summary) {
+            @NonNull CharSequence title, @NonNull String summary, @NonNull Drawable icon) {
         setKey(usage.getPackageName() + "," + usage.getPermissionGroupName());
         setTitle(title);
         setSummary(summary);
+        setIcon(icon);
         setOnPreferenceClickListener(preference -> {
-            Intent intent = new Intent(Intent.ACTION_MANAGE_APP_PERMISSION);
+            Intent intent = new Intent(context, AppPermissionActivity.class);
             intent.putExtra(Intent.EXTRA_PACKAGE_NAME, usage.getPackageName());
             intent.putExtra(Intent.EXTRA_PERMISSION_NAME, usage.getPermissionName());
+            intent.putExtra(Intent.EXTRA_USER, UserHandle.getUserHandleForUid(usage.getUid()));
             context.startActivity(intent);
             return true;
         });
