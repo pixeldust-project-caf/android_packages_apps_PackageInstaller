@@ -99,12 +99,9 @@ public final class Utils {
         PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_EXTERNAL_STORAGE, STORAGE);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_AUDIO, MEDIA_AURAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_AUDIO, MEDIA_AURAL);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_IMAGES, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_IMAGES, MEDIA_VISUAL);
         PLATFORM_PERMISSIONS.put(Manifest.permission.READ_MEDIA_VIDEO, MEDIA_VISUAL);
-        PLATFORM_PERMISSIONS.put(Manifest.permission.WRITE_MEDIA_VIDEO, MEDIA_VISUAL);
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_MEDIA_LOCATION, MEDIA_VISUAL);
 
         PLATFORM_PERMISSIONS.put(Manifest.permission.ACCESS_FINE_LOCATION, LOCATION);
@@ -171,9 +168,9 @@ public final class Utils {
      * @return The group the permission belongs to
      */
     public static @Nullable String getGroupOfPermission(@NonNull PermissionInfo permission) {
-        String groupName = permission.group;
+        String groupName = Utils.getGroupOfPlatformPermission(permission.name);
         if (groupName == null) {
-            groupName = Utils.getGroupOfPlatformPermission(permission.name);
+            groupName = permission.group;
         }
 
         return groupName;
@@ -271,22 +268,6 @@ public final class Utils {
      * @return
      */
     public static boolean shouldShowPermission(Context context, AppPermissionGroup group) {
-        boolean isSystemFixed = group.isSystemFixed();
-        if (group.getBackgroundPermissions() != null) {
-            // If the foreground mode is fixed to "enabled", the background mode might still be
-            // switchable. We only want to suppress the group if nothing can be switched
-            if (group.areRuntimePermissionsGranted()) {
-                isSystemFixed &= group.getBackgroundPermissions().isSystemFixed();
-            }
-        }
-
-        // We currently will not show permissions fixed by the system.
-        // which is what the system does for system components.
-        if (isSystemFixed && !LocationUtils.isLocationGroupAndProvider(context,
-                group.getName(), group.getApp().packageName)) {
-            return false;
-        }
-
         if (!group.isGrantingAllowed()) {
             return false;
         }
