@@ -19,7 +19,6 @@ package com.android.packageinstaller.role.ui;
 import android.app.role.RoleManager;
 import android.app.role.RoleManagerCallback;
 import android.content.Context;
-import android.os.Process;
 import android.os.UserHandle;
 import android.util.Log;
 
@@ -29,33 +28,34 @@ import androidx.lifecycle.LiveData;
 import java.util.concurrent.Executor;
 
 /**
- * {@link LiveData} for the state of a role request.
+ * {@link LiveData} for the state of adding a role holder.
  */
-public class RequestRoleLiveData extends LiveData<Integer> {
+public class AddRoleHolderStateLiveData extends LiveData<Integer> {
 
-    private static final String LOG_TAG = RequestRoleLiveData.class.getSimpleName();
+    private static final String LOG_TAG = AddRoleHolderStateLiveData.class.getSimpleName();
 
     public static final int STATE_IDLE = 0;
     public static final int STATE_ADDING = 1;
     public static final int STATE_SUCCESS = 2;
     public static final int STATE_FAILURE = 3;
 
-    public RequestRoleLiveData() {
+    public AddRoleHolderStateLiveData() {
         setValue(STATE_IDLE);
     }
 
     /**
      * Add an application to the holders of a role, and update the state accordingly. Will be no-op
-     * if already called once.
+     * if the current state is not {@link #STATE_IDLE}.
      *
      * @param roleName the name of the role
      * @param packageName the package name of the application
+     * @param user the user to add the role holder for
      * @param context the {@code Context} to retrieve system services
      */
-    public void addRoleHolder(@NonNull String roleName, @NonNull String packageName,
-            @NonNull Context context) {
+    public void addRoleHolderAsUser(@NonNull String roleName, @NonNull String packageName,
+            @NonNull UserHandle user, @NonNull Context context) {
         if (getValue() != STATE_IDLE) {
-            Log.w(LOG_TAG, "Already (tried) adding package as role holder, requested role: "
+            Log.e(LOG_TAG, "Already (tried) adding package as role holder, requested role: "
                     + roleName + ", requested package: " + packageName);
             return;
         }
@@ -64,7 +64,6 @@ public class RequestRoleLiveData extends LiveData<Integer> {
         setValue(STATE_ADDING);
 
         RoleManager roleManager = context.getSystemService(RoleManager.class);
-        UserHandle user = Process.myUserHandle();
         Executor executor = context.getMainExecutor();
         roleManager.addRoleHolderAsUser(roleName, packageName, user, executor,
                 new RoleManagerCallback() {
@@ -81,5 +80,19 @@ public class RequestRoleLiveData extends LiveData<Integer> {
                         setValue(STATE_FAILURE);
                     }
                 });
+    }
+
+    /**
+     * Reset the state of this live data to {@link #STATE_IDLE}. Will be no-op if the current state
+     * is not {@link #STATE_SUCCESS} or {@link #STATE_FAILURE}.
+     */
+    public void resetState() {
+        int state = getValue();
+        if (!(state == STATE_SUCCESS || state == STATE_FAILURE)) {
+            Log.e(LOG_TAG, "Trying to reset state when the current state is not STATE_SUCCESS or"
+                    + " STATE_FAILURE");
+            return;
+        }
+        setValue(STATE_IDLE);
     }
 }

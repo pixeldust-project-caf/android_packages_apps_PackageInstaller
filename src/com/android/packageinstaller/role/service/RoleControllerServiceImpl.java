@@ -124,10 +124,24 @@ public class RoleControllerServiceImpl extends RoleControllerService {
 
     @Override
     public void onGrantDefaultRoles(@NonNull RoleManagerCallback callback) {
+        if (callback == null) {
+            Log.e(LOG_TAG, "callback cannot be null");
+            return;
+        }
+
         ArrayMap<String, Role> roles = Roles.getRoles(this);
+        List<String> roleNames = new ArrayList<>();
+        int rolesSize = roles.size();
+        for (int i = 0; i < rolesSize; i++) {
+            Role role = roles.valueAt(i);
+            if (!role.isAvailable(this)) {
+                continue;
+            }
+            roleNames.add(role.getName());
+        }
         // TODO: Clean up holders of roles that will be removed.
-        List<String> roleNames = new ArrayList<>(roles.keySet());
         mRoleManager.setRoleNamesFromController(roleNames);
+
         //TODO grant default permissions and appops
         Log.i(LOG_TAG, "Granting defaults for user " + UserHandle.myUserId());
         callback.onSuccess();
@@ -139,6 +153,11 @@ public class RoleControllerServiceImpl extends RoleControllerService {
         Role role = Roles.getRoles(this).get(roleName);
         if (role == null) {
             Log.e(LOG_TAG, "Unknown role: " + roleName);
+            callback.onFailure();
+            return;
+        }
+        if (!role.isAvailable(this)) {
+            Log.e(LOG_TAG, "Role is unavailable: " + roleName);
             callback.onFailure();
             return;
         }
@@ -203,6 +222,11 @@ public class RoleControllerServiceImpl extends RoleControllerService {
             callback.onFailure();
             return;
         }
+        if (!role.isAvailable(this)) {
+            Log.e(LOG_TAG, "Role is unavailable: " + roleName);
+            callback.onFailure();
+            return;
+        }
 
         boolean removed = removeRoleHolderInternal(role, packageName);
         if (!removed) {
@@ -220,6 +244,11 @@ public class RoleControllerServiceImpl extends RoleControllerService {
         Role role = Roles.getRoles(this).get(roleName);
         if (role == null) {
             Log.e(LOG_TAG, "Unknown role: " + roleName);
+            callback.onFailure();
+            return;
+        }
+        if (!role.isAvailable(this)) {
+            Log.e(LOG_TAG, "Role is unavailable: " + roleName);
             callback.onFailure();
             return;
         }

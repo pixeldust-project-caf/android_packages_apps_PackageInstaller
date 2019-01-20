@@ -22,6 +22,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.PackageManager.NameNotFoundException;
 import android.content.res.XmlResourceParser;
+import android.os.Build;
 import android.util.ArrayMap;
 import android.util.Log;
 import android.util.Pair;
@@ -70,12 +71,15 @@ public class Roles {
     private static final String TAG_PREFERRED_ACTIVITIES = "preferred-activities";
     private static final String TAG_PREFERRED_ACTIVITY = "preferred-activity";
     private static final String ATTRIBUTE_NAME = "name";
-    private static final String ATTRIBUTE_PERMISSION = "permission";
+    private static final String ATTRIBUTE_AVAILABILITY_PROVIDER = "availabilityProvider";
     private static final String ATTRIBUTE_EXCLUSIVE = "exclusive";
     private static final String ATTRIBUTE_LABEL = "label";
+    private static final String ATTRIBUTE_PERMISSION = "permission";
     private static final String ATTRIBUTE_SCHEME = "scheme";
     private static final String ATTRIBUTE_MIME_TYPE = "mimeType";
     private static final String ATTRIBUTE_VALUE = "value";
+    private static final String ATTRIBUTE_OPTIONAL = "optional";
+    private static final String ATTRIBUTE_MAX_TARGET_SDK_VERSION = "maxTargetSdkVersion";
     private static final String ATTRIBUTE_MODE = "mode";
 
     private static final String MODE_NAME_ALLOWED = "allowed";
@@ -99,6 +103,17 @@ public class Roles {
     private static ArrayMap<String, Role> sRoles;
 
     private static boolean sIsolatedStorage;
+    private static final List<String> ISOLATED_STORAGE_PERMISSIONS = new ArrayList<>();
+    static {
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_AUDIO);
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_VIDEO);
+        ISOLATED_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_MEDIA_IMAGES);
+    }
+    private static final List<String> LEGACY_STORAGE_PERMISSIONS = new ArrayList<>();
+    static {
+        LEGACY_STORAGE_PERMISSIONS.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+        LEGACY_STORAGE_PERMISSIONS.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+    }
 
     private Roles() {}
 
@@ -125,8 +140,7 @@ public class Roles {
         // around with permission definitions to return us to pre-Q behavior.
         // STOPSHIP(b/112545973): remove once feature enabled by default
         try {
-            context.getPackageManager()
-                    .getPermissionInfo(android.Manifest.permission.READ_MEDIA_AUDIO, 0);
+            context.getPackageManager().getPermissionInfo(ISOLATED_STORAGE_PERMISSIONS.get(0), 0);
             sIsolatedStorage = true;
         } catch (NameNotFoundException e) {
             sIsolatedStorage = false;
@@ -279,6 +293,25 @@ public class Roles {
             return null;
         }
 
+        String availabilityProviderClassSimpleName = getAttributeValue(parser,
+                ATTRIBUTE_AVAILABILITY_PROVIDER);
+        RoleAvailabilityProvider availabilityProvider;
+        if (availabilityProviderClassSimpleName != null) {
+            String availabilityProviderClassName = Roles.class.getPackage().getName() + '.'
+                    + availabilityProviderClassSimpleName;
+            try {
+                availabilityProvider = (RoleAvailabilityProvider) Class.forName(
+                        availabilityProviderClassName).newInstance();
+            } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
+                throwOrLogMessage("Unable to instantiate availability provider: "
+                        + availabilityProviderClassName, e);
+                skipCurrentTag(parser);
+                return null;
+            }
+        } else {
+            availabilityProvider = null;
+        }
+
         Boolean exclusive = requireAttributeBooleanValue(parser, ATTRIBUTE_EXCLUSIVE, true,
                 TAG_ROLE);
         if (exclusive == null) {
@@ -352,8 +385,8 @@ public class Roles {
         if (preferredActivities == null) {
             preferredActivities = Collections.emptyList();
         }
-        return new Role(name, labelResource, exclusive, requiredComponents, permissions, appOps,
-                preferredActivities);
+        return new Role(name, availabilityProvider, exclusive, labelResource, requiredComponents,
+                permissions, appOps, preferredActivities);
     }
 
     @NonNull
@@ -400,7 +433,11 @@ public class Roles {
             @NonNull String name) throws IOException, XmlPullParserException {
         String permission = getAttributeValue(parser, ATTRIBUTE_PERMISSION);
         IntentFilterData intentFilterData = null;
-        ArrayMap<String, Object> metaData = new ArrayMap<>();
+        List<RequiredMetaData> metaData = new ArrayList<>();
+        List<String> metaDataNames;
+        if (DEBUG) {
+            metaDataNames = new ArrayList<>();
+        }
 
         int type;
         int depth;
@@ -427,7 +464,9 @@ public class Roles {
                     if (metaDataName == null) {
                         continue;
                     }
-                    checkDuplicateElement(metaDataName, metaData.keySet(), "meta data");
+                    if (DEBUG) {
+                        checkDuplicateElement(metaDataName, metaDataNames, "meta data");
+                    }
                     // HACK: Only support boolean for now.
                     // TODO: Support android:resource and other types of android:value, maybe by
                     // switching to TypedArray and styleables.
@@ -436,7 +475,14 @@ public class Roles {
                     if (metaDataValue == null) {
                         continue;
                     }
-                    metaData.put(metaDataName, metaDataValue);
+                    boolean metaDataOptional = getAttributeBooleanValue(parser, ATTRIBUTE_OPTIONAL,
+                            false);
+                    RequiredMetaData requiredMetaData = new RequiredMetaData(metaDataName,
+                            metaDataValue, metaDataOptional);
+                    metaData.add(requiredMetaData);
+                    if (DEBUG) {
+                        metaDataNames.add(metaDataName);
+                    }
                     break;
                 default:
                     throwOrLogForUnknownTag(parser);
@@ -598,13 +644,9 @@ public class Roles {
         // around with permission definitions to return us to pre-Q behavior.
         // STOPSHIP(b/112545973): remove once feature enabled by default
         if (!sIsolatedStorage) {
-            boolean removed = false;
-            removed |= permissions.remove(android.Manifest.permission.READ_MEDIA_AUDIO);
-            removed |= permissions.remove(android.Manifest.permission.READ_MEDIA_VIDEO);
-            removed |= permissions.remove(android.Manifest.permission.READ_MEDIA_IMAGES);
+            boolean removed = permissions.removeAll(ISOLATED_STORAGE_PERMISSIONS);
             if (removed) {
-                permissions.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
-                permissions.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                permissions.addAll(LEGACY_STORAGE_PERMISSIONS);
             }
         }
 
@@ -635,6 +677,18 @@ public class Roles {
                 validateAppOpName(name);
                 checkDuplicateElement(name, appOpNames, "app op");
                 appOpNames.add(name);
+                Integer maxTargetSdkVersion = getAttributeIntValue(parser,
+                        ATTRIBUTE_MAX_TARGET_SDK_VERSION, Integer.MIN_VALUE);
+                if (maxTargetSdkVersion == Integer.MIN_VALUE) {
+                    maxTargetSdkVersion = null;
+                }
+                if (DEBUG) {
+                    if (maxTargetSdkVersion != null
+                            && maxTargetSdkVersion < Build.VERSION_CODES.BASE) {
+                        throwOrLogMessage("Invalid value for \"maxTargetSdkVersion\": "
+                                + maxTargetSdkVersion);
+                    }
+                }
                 String modeName = requireAttributeValue(parser, ATTRIBUTE_MODE, TAG_APP_OP);
                 if (modeName == null) {
                     continue;
@@ -645,7 +699,7 @@ public class Roles {
                     continue;
                 }
                 int mode = sModeNameToMode.valueAt(modeIndex);
-                AppOp appOp = new AppOp(name, mode);
+                AppOp appOp = new AppOp(name, maxTargetSdkVersion, mode);
                 appOps.add(appOp);
             } else {
                 throwOrLogForUnknownTag(parser);
@@ -787,6 +841,11 @@ public class Roles {
         return getAttributeBooleanValue(parser, name, defaultValue);
     }
 
+    private static int getAttributeIntValue(@NonNull XmlResourceParser parser,
+            @NonNull String name, int defaultValue) {
+        return parser.getAttributeIntValue(null, name, defaultValue);
+    }
+
     private static int getAttributeResourceValue(@NonNull XmlResourceParser parser,
             @NonNull String name, int defaultValue) {
         return parser.getAttributeResourceValue(null, name, defaultValue);
@@ -851,6 +910,15 @@ public class Roles {
             int permissionsSize = permissions.size();
             for (int permissionsIndex = 0; permissionsIndex < permissionsSize; permissionsIndex++) {
                 String permission = permissions.get(permissionsIndex);
+
+                // If the storage model feature flag is disabled, we need to fiddle
+                // around with permission definitions to return us to pre-Q behavior.
+                // STOPSHIP(b/112545973): remove once feature enabled by default
+                if (!sIsolatedStorage) {
+                    if (ISOLATED_STORAGE_PERMISSIONS.contains(permission)) {
+                        continue;
+                    }
+                }
 
                 validatePermission(permission, context);
             }
