@@ -16,6 +16,9 @@
 
 package com.android.packageinstaller.permission.service;
 
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DEFAULT;
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_DENIED;
+import static android.app.admin.DevicePolicyManager.PERMISSION_GRANT_STATE_GRANTED;
 import static android.content.pm.PackageManager.GET_PERMISSIONS;
 import static android.permission.PermissionControllerManager.COUNT_ONLY_WHEN_GRANTED;
 import static android.permission.PermissionControllerManager.COUNT_WHEN_SYSTEM;
@@ -283,7 +286,7 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
         if (!doDryRun) {
             int numChangedApps = appsWithRevokedPerms.size();
             for (int i = 0; i < numChangedApps; i++) {
-                appsWithRevokedPerms.get(i).persistChanges();
+                appsWithRevokedPerms.get(i).persistChanges(true);
             }
         }
 
@@ -502,5 +505,64 @@ public final class PermissionControllerServiceImpl extends PermissionControllerS
             @NonNull String packageName) {
         return PermissionControllerServiceImplRoleMixin.onIsApplicationQualifiedForRole(roleName,
                 packageName, this);
+    }
+
+    @Override
+    public boolean onSetRuntimePermissionGrantStateByDeviceAdmin(@NonNull String callerPackageName,
+            @NonNull String packageName, @NonNull String unexpandedPermission, int grantState) {
+        PackageInfo callerPkgInfo = getPkgInfo(callerPackageName);
+        if (callerPkgInfo == null) {
+            Log.w(LOG_TAG, "Cannot fix " + unexpandedPermission + " as admin "
+                    + callerPackageName + " cannot be found");
+            return false;
+        }
+
+        PackageInfo pkgInfo = getPkgInfo(packageName);
+        if (pkgInfo == null) {
+            Log.w(LOG_TAG, "Cannot fix " + unexpandedPermission + " as " + packageName
+                    + " cannot be found");
+            return false;
+        }
+
+        ArrayList<String> expandedPermissions = addSplitPermissions(
+                Collections.singletonList(unexpandedPermission),
+                callerPkgInfo.applicationInfo.targetSdkVersion);
+
+        AppPermissions app = new AppPermissions(this, pkgInfo, false, null);
+
+        int numPerms = expandedPermissions.size();
+        for (int i = 0; i < numPerms; i++) {
+            String permName = expandedPermissions.get(i);
+            AppPermissionGroup group = app.getGroupForPermission(permName);
+            if (group == null || group.isSystemFixed()) {
+                continue;
+            }
+
+            Permission perm = group.getPermission(permName);
+            if (perm == null) {
+                continue;
+            }
+
+            switch (grantState) {
+                case PERMISSION_GRANT_STATE_GRANTED:
+                    perm.setPolicyFixed(true);
+                    group.grantRuntimePermissions(false, new String[]{permName});
+                    break;
+                case PERMISSION_GRANT_STATE_DENIED:
+                    perm.setPolicyFixed(true);
+                    group.revokeRuntimePermissions(false, new String[]{permName});
+                    break;
+                case PERMISSION_GRANT_STATE_DEFAULT:
+                    perm.setPolicyFixed(false);
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        app.persistChanges(grantState == PERMISSION_GRANT_STATE_DENIED
+                || !callerPackageName.equals(packageName));
+
+        return true;
     }
 }
