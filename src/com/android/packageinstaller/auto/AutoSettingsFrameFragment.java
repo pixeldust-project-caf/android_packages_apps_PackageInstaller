@@ -21,21 +21,22 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceFragmentCompat;
 
-import com.android.car.ui.preference.PreferenceFragment;
-import com.android.car.ui.toolbar.MenuItem;
-import com.android.car.ui.toolbar.ToolbarController;
 import com.android.permissioncontroller.R;
 
-import java.util.Collections;
-
 /** Common settings frame for car related settings in permission controller. */
-public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
+public abstract class AutoSettingsFrameFragment extends PreferenceFragmentCompat {
 
-    private ToolbarController mToolbar;
+    private TextView mLabelView;
+    private ProgressBar mProgressBar;
+    private Button mAction;
 
     private CharSequence mLabel;
     private boolean mIsLoading;
@@ -47,10 +48,16 @@ public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
             @Nullable Bundle savedInstanceState) {
         View rootView = super.onCreateView(inflater, container, savedInstanceState);
 
-        mToolbar = rootView.findViewById(R.id.toolbar);
+        View backButton = rootView.findViewById(R.id.back_button);
+        backButton.setOnClickListener(v -> getActivity().onBackPressed());
 
+        mLabelView = rootView.findViewById(R.id.label);
         updateHeaderLabel();
+
+        mProgressBar = rootView.findViewById(R.id.progress_bar);
         updateLoading();
+
+        mAction = rootView.findViewById(R.id.action);
         updateAction();
 
         return rootView;
@@ -59,10 +66,6 @@ public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
     /** Sets the header text of this fragment. */
     public void setHeaderLabel(CharSequence label) {
         mLabel = label;
-        if (getPreferenceScreen() != null) {
-            // Needed because CarUi's preference fragment reads this title
-            getPreferenceScreen().setTitle(mLabel);
-        }
         updateHeaderLabel();
     }
 
@@ -72,8 +75,8 @@ public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
     }
 
     private void updateHeaderLabel() {
-        if (mToolbar != null) {
-            mToolbar.setTitle(mLabel);
+        if (mLabelView != null) {
+            mLabelView.setText(mLabel);
         }
     }
 
@@ -88,12 +91,8 @@ public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
     }
 
     private void updateLoading() {
-        if (mToolbar != null) {
-            if (mIsLoading) {
-                mToolbar.showProgressBar();
-            } else {
-                mToolbar.hideProgressBar();
-            }
+        if (mProgressBar != null) {
+            mProgressBar.setVisibility(mIsLoading ? View.VISIBLE : View.GONE);
         }
     }
 
@@ -108,16 +107,15 @@ public abstract class AutoSettingsFrameFragment extends PreferenceFragment {
     }
 
     private void updateAction() {
-        if (mToolbar == null) {
+        if (mAction == null) {
             return;
         }
         if (!TextUtils.isEmpty(mActionLabel) && mActionOnClickListener != null) {
-            mToolbar.setMenuItems(Collections.singletonList(MenuItem.builder(getContext())
-                    .setTitle(mActionLabel)
-                    .setOnClickListener(i -> mActionOnClickListener.onClick(null))
-                    .build()));
+            mAction.setText(mActionLabel);
+            mAction.setOnClickListener(mActionOnClickListener);
+            mAction.setVisibility(View.VISIBLE);
         } else {
-            mToolbar.setMenuItems(null);
+            mAction.setVisibility(View.GONE);
         }
     }
 }
